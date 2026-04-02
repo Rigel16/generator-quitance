@@ -1351,168 +1351,197 @@
                     const refSlug = this.sanitizeFilename(tenantName).substring(0, 4).toUpperCase();
                     const refNum  = `QDL-${refDate}-${refSlug}`;
 
-                    // ─── WATERMARK ────────────────────────────────────────────────────
-                    doc.setTextColor(236, 239, 248);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(62);
-                    doc.text('QUITTANCE', W / 2, 172, { align: 'center', angle: 35 });
+                    // ─── HELPER : texte mixte gras/normal avec retour à la ligne ─────
+                    const drawMixed = (parts, sx, sy, maxW, fSize = 10, lineH = 5.6) => {
+                        const words = [];
+                        parts.forEach(({text, bold}) => {
+                            text.split(' ').filter(w => w.length > 0).forEach(w => words.push({w, bold}));
+                        });
+                        const lines = [];
+                        let curLine = [], curW = 0;
+                        const spW = () => { doc.setFont('helvetica','normal'); doc.setFontSize(fSize); return doc.getTextWidth(' '); };
+                        words.forEach(word => {
+                            doc.setFont('helvetica', word.bold ? 'bold' : 'normal');
+                            doc.setFontSize(fSize);
+                            const ww = doc.getTextWidth(word.w);
+                            const needed = curLine.length > 0 ? spW() + ww : ww;
+                            if (needed + curW > maxW && curLine.length > 0) {
+                                lines.push(curLine); curLine = [{...word}]; curW = ww;
+                            } else {
+                                curLine.push({...word}); curW += needed;
+                            }
+                        });
+                        if (curLine.length > 0) lines.push(curLine);
+                        lines.forEach((line, li) => {
+                            let cx = sx;
+                            line.forEach((word, wi) => {
+                                if (wi > 0) { doc.setFont('helvetica','normal'); doc.setFontSize(fSize); cx += doc.getTextWidth(' '); }
+                                doc.setFont('helvetica', word.bold ? 'bold' : 'normal');
+                                doc.setFontSize(fSize);
+                                doc.text(word.w, cx, sy + li * lineH);
+                                cx += doc.getTextWidth(word.w);
+                            });
+                        });
+                        return lines.length * lineH;
+                    };
 
-                    // ─── HEADER : dégradé simulé ──────────────────────────────────────
-                    for (let i = 0; i < 42; i++) {
-                        const t = i / 42;
-                        doc.setFillColor(
-                            Math.round(navy[0] + (navyMid[0] - navy[0]) * t * 0.6),
-                            Math.round(navy[1] + (navyMid[1] - navy[1]) * t * 0.6),
-                            Math.round(navy[2] + (navyMid[2] - navy[2]) * t * 0.6)
-                        );
-                        doc.rect(0, i, W, 1.1, 'F');
-                    }
-                    // Barre dorée sous le header
+                    // ─── HEADER ────────────────────────────────────────────────────────
+                    // Fond navy uni
+                    doc.setFillColor(...navy);
+                    doc.rect(0, 0, W, 40, 'F');
+                    // Barre dorée en bas du header
                     doc.setFillColor(...gold);
-                    doc.rect(0, 42, W, 2.5, 'F');
+                    doc.rect(0, 40, W, 2, 'F');
 
-                    // Cercle monogramme gauche
-                    doc.setFillColor(35, 66, 128);
-                    doc.circle(mL + 11, 21, 10, 'F');
-                    doc.setLineWidth(0.4);
+                    // Monogramme
+                    doc.setFillColor(38, 72, 138);
+                    doc.circle(mL + 10, 20, 9, 'F');
                     doc.setDrawColor(...gold);
-                    doc.circle(mL + 11, 21, 10, 'S');
+                    doc.setLineWidth(0.5);
+                    doc.circle(mL + 10, 20, 9, 'S');
                     doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setTextColor(255, 255, 255);
-                    doc.text('QL', mL + 11, 23.5, { align: 'center' });
+                    doc.text('QL', mL + 10, 22.5, { align: 'center' });
 
-                    // Référence & date (coin haut droit, or)
+                    // Référence et date haut droit
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(7);
                     doc.setTextColor(...gold);
                     doc.text(`Réf. : ${refNum}`, W - mR, 10, { align: 'right' });
-                    doc.setTextColor(185, 200, 228);
+                    doc.setTextColor(180, 200, 230);
                     doc.text(`Émis le ${issueDate.toLocaleDateString('fr-FR')}`, W - mR, 15, { align: 'right' });
 
-                    // Titre principal
+                    // Titre
                     doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(23);
+                    doc.setFontSize(22);
                     doc.setTextColor(255, 255, 255);
                     doc.text('QUITTANCE DE LOYER', W / 2, 20, { align: 'center' });
 
                     // Sous-titre
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(8);
-                    doc.setTextColor(185, 200, 228);
+                    doc.setTextColor(180, 200, 230);
                     doc.text('Location vide ou meublée à titre de résidence principale', W / 2, 27, { align: 'center' });
 
                     // Badge période
                     doc.setFillColor(...gold);
-                    doc.roundedRect(W / 2 - 28, 30, 56, 8, 2, 2, 'F');
+                    doc.roundedRect(W / 2 - 27, 30, 54, 7.5, 2, 2, 'F');
                     doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(8.5);
+                    doc.setFontSize(8);
                     doc.setTextColor(...navy);
-                    doc.text(`Période : ${period}`, W / 2, 35.5, { align: 'center' });
+                    doc.text(`Période : ${period}`, W / 2, 35, { align: 'center' });
 
-                    // ─── CARTES INFO (3 colonnes) ──────────────────────────────────────
-                    let y = 50;
+                    // ─── 3 CARTES INFO ─────────────────────────────────────────────────
+                    let y = 48;
                     const cardGap = 3;
                     const cardW   = (cW - cardGap * 2) / 3;
-                    const cardH   = 34;
+                    const cardH   = 32;
 
                     const infoCards = [
-                        {
-                            label : 'BAILLEUR',
-                            title : landlordName,
-                            lines : landlordAddress.split('\n').filter(l => l.trim()),
-                            x     : mL
-                        },
-                        {
-                            label : 'BIEN LOUÉ',
-                            title : propertyAddress.split('\n')[0] || propertyAddress,
-                            lines : propertyAddress.split('\n').slice(1).filter(l => l.trim()),
-                            x     : mL + cardW + cardGap
-                        },
-                        {
-                            label : 'LOCATAIRE',
-                            title : tenantFullName,
-                            lines : [],
-                            x     : mL + (cardW + cardGap) * 2
-                        }
+                        { label: 'BAILLEUR',   title: landlordName,   lines: landlordAddress.split('\n').filter(l => l.trim()), x: mL },
+                        { label: 'BIEN LOUÉ',  title: propertyAddress.split('\n')[0] || propertyAddress, lines: propertyAddress.split('\n').slice(1).filter(l => l.trim()), x: mL + cardW + cardGap },
+                        { label: 'LOCATAIRE',  title: tenantFullName, lines: [], x: mL + (cardW + cardGap) * 2 }
                     ];
 
                     infoCards.forEach(card => {
-                        // Ombre portée
-                        doc.setFillColor(205, 212, 228);
-                        doc.roundedRect(card.x + 0.7, y + 0.7, cardW, cardH, 2, 2, 'F');
+                        // Ombre légère
+                        doc.setFillColor(210, 218, 235);
+                        doc.roundedRect(card.x + 0.6, y + 0.6, cardW, cardH, 2, 2, 'F');
                         // Fond blanc
                         doc.setFillColor(255, 255, 255);
                         doc.roundedRect(card.x, y, cardW, cardH, 2, 2, 'F');
                         // Barre navy top
                         doc.setFillColor(...navy);
-                        doc.roundedRect(card.x, y, cardW, 7, 2, 2, 'F');
-                        doc.rect(card.x, y + 4, cardW, 3, 'F');
-                        // Label dans la barre
+                        doc.roundedRect(card.x, y, cardW, 6.5, 2, 2, 'F');
+                        doc.rect(card.x, y + 3.5, cardW, 3, 'F');
+                        // Label
                         doc.setFont('helvetica', 'bold');
                         doc.setFontSize(7);
                         doc.setTextColor(255, 255, 255);
-                        doc.text(card.label, card.x + cardW / 2, y + 5, { align: 'center' });
-                        // Petit filet doré sous la barre
+                        doc.text(card.label, card.x + cardW / 2, y + 4.8, { align: 'center' });
+                        // Filet doré
                         doc.setFillColor(...gold);
-                        doc.rect(card.x, y + 7, cardW, 0.8, 'F');
-                        // Titre (nom)
+                        doc.rect(card.x, y + 6.5, cardW, 0.7, 'F');
+                        // Nom principal
                         doc.setFont('helvetica', 'bold');
                         doc.setFontSize(8.5);
                         doc.setTextColor(...textDk);
                         const tLines = doc.splitTextToSize(card.title, cardW - 6);
-                        tLines.slice(0, 2).forEach((l, i) => doc.text(l, card.x + 3, y + 13 + i * 5));
-                        // Lignes adresse
+                        tLines.slice(0, 2).forEach((l, i) => doc.text(l, card.x + 3, y + 12.5 + i * 5));
+                        // Adresse
                         doc.setFont('helvetica', 'normal');
                         doc.setFontSize(7.5);
                         doc.setTextColor(...textMt);
-                        card.lines.slice(0, 2).forEach((l, i) => doc.text(l, card.x + 3, y + 24 + i * 4.5));
+                        card.lines.slice(0, 2).forEach((l, i) => doc.text(l, card.x + 3, y + 23 + i * 4.5));
                     });
 
-                    // ─── SÉPARATEUR DORÉ ──────────────────────────────────────────────
+                    // ─── SÉPARATEUR ────────────────────────────────────────────────────
                     y += cardH + 7;
                     doc.setDrawColor(...gold);
                     doc.setLineWidth(0.5);
                     doc.line(mL, y, W - mR, y);
-                    y += 5;
+                    y += 6;
 
-                    // ─── BLOC DÉCLARATION ─────────────────────────────────────────────
-                    const mainText = `Je soussigné(e) ${landlordName}, propriétaire du logement désigné ci-dessus, déclare avoir reçu de ${tenantFullName}, la somme de ${this.formatCurrency(total)} (${this.numberToWords(total)}), au titre du paiement du loyer et des charges pour la période du mois de ${period} et lui en donne quittance, sous réserve de tous mes droits.`;
-                    doc.setFont('times', 'italic');
-                    doc.setFontSize(10);
-                    doc.setTextColor(...textDk);
-                    const splitText = doc.splitTextToSize(mainText, cW - 10);
-                    const declH = splitText.length * 5.3 + 9;
+                    // ─── DÉCLARATION (texte mixte gras) ────────────────────────────────
+                    const declParts = [
+                        { text: 'Je soussigné(e)', bold: false },
+                        { text: landlordName + ',', bold: true },
+                        { text: 'propriétaire du logement désigné ci-dessus, déclare avoir reçu de', bold: false },
+                        { text: tenantFullName + ',', bold: true },
+                        { text: 'la somme de', bold: false },
+                        { text: this.formatCurrency(total), bold: true },
+                        { text: '(' + this.numberToWords(total) + '),', bold: false },
+                        { text: 'au titre du paiement du loyer et des charges pour la période du mois de', bold: false },
+                        { text: period, bold: true },
+                        { text: 'et lui en donne quittance, sous réserve de tous mes droits.', bold: false },
+                    ];
 
-                    // Fond
+                    // Calcul de la hauteur du bloc déclaration
+                    const declInnerW = cW - 10;
+                    const tempWords = [];
+                    declParts.forEach(({text, bold}) => text.split(' ').filter(w=>w).forEach(w => tempWords.push({w, bold})));
+                    let tmpLine = [], tmpW = 0, tmpLines = 0;
+                    const spaceW = (() => { doc.setFont('helvetica','normal'); doc.setFontSize(10); return doc.getTextWidth(' '); })();
+                    tempWords.forEach(word => {
+                        doc.setFont('helvetica', word.bold ? 'bold' : 'normal');
+                        doc.setFontSize(10);
+                        const ww = doc.getTextWidth(word.w);
+                        const needed = tmpLine.length > 0 ? spaceW + ww : ww;
+                        if (needed + tmpW > declInnerW && tmpLine.length > 0) { tmpLines++; tmpLine = [word]; tmpW = ww; }
+                        else { tmpLine.push(word); tmpW += needed; }
+                    });
+                    if (tmpLine.length > 0) tmpLines++;
+                    const declH = tmpLines * 5.6 + 10;
+
+                    // Fond + bordure gauche dorée
                     doc.setFillColor(...bgLt);
                     doc.rect(mL, y, cW, declH, 'F');
-                    // Bordure gauche dorée
                     doc.setFillColor(...gold);
                     doc.rect(mL, y, 3, declH, 'F');
-                    // Contour
                     doc.setDrawColor(210, 218, 238);
-                    doc.setLineWidth(0.3);
+                    doc.setLineWidth(0.25);
                     doc.rect(mL, y, cW, declH, 'S');
 
-                    splitText.forEach((l, i) => doc.text(l, mL + 7, y + 6.5 + i * 5.3));
-                    y += declH + 7;
+                    // Texte avec gras mixte
+                    doc.setTextColor(...textDk);
+                    drawMixed(declParts, mL + 7, y + 6.5, declInnerW, 10, 5.6);
+                    y += declH + 8;
 
-                    // ─── TABLEAU RÉCAPITULATIF ────────────────────────────────────────
-                    // Titre section
+                    // ─── TABLEAU RÉCAPITULATIF ─────────────────────────────────────────
                     doc.setFillColor(...gold);
-                    doc.rect(mL, y, 3.5, 9, 'F');
+                    doc.rect(mL, y, 3.5, 8.5, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(9.5);
                     doc.setTextColor(...navy);
-                    doc.text('RÉCAPITULATIF DU PAIEMENT', mL + 7, y + 6.5);
-                    y += 12;
+                    doc.text('RÉCAPITULATIF DU PAIEMENT', mL + 7, y + 6);
+                    y += 11;
 
                     const colD = cW * 0.72;
                     const colM = cW * 0.28;
                     const rH   = 8;
 
-                    // En-tête tableau
+                    // En-tête
                     doc.setFillColor(...navy);
                     doc.rect(mL, y, cW, rH, 'F');
                     doc.setFont('helvetica', 'bold');
@@ -1522,16 +1551,14 @@
                     doc.text('Montant', mL + cW - 4, y + 5.5, { align: 'right' });
                     y += rH;
 
-                    const tableRows = [
-                        { label: 'Loyer hors charges',   amount: rent,    bg: [255, 255, 255] },
+                    [
+                        { label: 'Loyer hors charges',    amount: rent,    bg: [255, 255, 255] },
                         { label: 'Provisions sur charges', amount: charges, bg: bgLt },
-                    ];
-                    tableRows.forEach(row => {
+                    ].forEach(row => {
                         doc.setFillColor(...row.bg);
                         doc.rect(mL, y, cW, rH, 'F');
-                        doc.setDrawColor(210, 218, 238);
+                        doc.setDrawColor(210, 220, 238);
                         doc.setLineWidth(0.25);
-                        // Bordures externes + séparateur colonne
                         doc.rect(mL, y, cW, rH, 'S');
                         doc.line(mL + colD, y, mL + colD, y + rH);
                         doc.setFont('helvetica', 'normal');
@@ -1542,42 +1569,43 @@
                         y += rH;
                     });
 
-                    // Ligne total bicolore navy + or
+                    // Ligne total : fond navy entier, montant en or
                     doc.setFillColor(...navy);
-                    doc.rect(mL, y, colD, 9, 'F');
-                    doc.setFillColor(...gold);
-                    doc.rect(mL + colD, y, colM, 9, 'F');
+                    doc.rect(mL, y, cW, 9, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(10);
                     doc.setTextColor(255, 255, 255);
                     doc.text('TOTAL', mL + 4, y + 6.2);
-                    doc.setTextColor(...navy);
+                    doc.setTextColor(...gold);
                     doc.text(this.formatCurrency(total), mL + cW - 4, y + 6.2, { align: 'right' });
                     y += 9;
 
-                    // ─── MODE DE PAIEMENT ─────────────────────────────────────────────
+                    // ─── MODE DE PAIEMENT ──────────────────────────────────────────────
                     y += 5;
                     doc.setFillColor(...bgLt);
-                    doc.setDrawColor(210, 218, 238);
-                    doc.setLineWidth(0.3);
+                    doc.setDrawColor(210, 220, 238);
+                    doc.setLineWidth(0.25);
                     doc.roundedRect(mL, y, cW, 8, 1.5, 1.5, 'FD');
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(8.5);
                     doc.setTextColor(...textMt);
-                    doc.text('Mode de paiement :', mL + 4, y + 5.3);
+                    const modeLabel = 'Mode de paiement :  ';
+                    doc.text(modeLabel, mL + 4, y + 5.3);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(...textDk);
-                    const mwLabel = doc.getTextWidth('Mode de paiement :  ');
-                    doc.text(paymentMethod, mL + 4 + mwLabel, y + 5.3);
+                    doc.setFontSize(8.5);
+                    const modeX = mL + 4 + doc.getTextWidth(modeLabel);
+                    doc.text(paymentMethod, modeX, y + 5.3);
 
                     if (paymentRef.trim()) {
-                        const sepX = mL + 4 + mwLabel + doc.getTextWidth(paymentMethod);
                         doc.setFont('helvetica', 'normal');
                         doc.setTextColor(...textMt);
-                        doc.text('   |   Réf. :', sepX, y + 5.3);
+                        const sepLabel = '   |   Réf. :  ';
+                        const sepX = modeX + doc.getTextWidth(paymentMethod);
+                        doc.text(sepLabel, sepX, y + 5.3);
                         doc.setFont('helvetica', 'bold');
                         doc.setTextColor(...textDk);
-                        doc.text(paymentRef, sepX + doc.getTextWidth('   |   Réf. :  '), y + 5.3);
+                        doc.text(paymentRef, sepX + doc.getTextWidth(sepLabel), y + 5.3);
                     }
                     y += 8;
 
@@ -1586,95 +1614,69 @@
                         doc.setFont('helvetica', 'normal');
                         doc.setFontSize(8.5);
                         doc.setTextColor(...textMt);
-                        const obsPrefix = 'Observations : ';
-                        const obsLines = doc.splitTextToSize(observations, cW - doc.getTextWidth(obsPrefix) - 4);
+                        const obsPrefix = 'Observations :  ';
                         doc.text(obsPrefix, mL, y);
+                        doc.setFont('helvetica', 'normal');
                         doc.setTextColor(...textDk);
+                        const obsLines = doc.splitTextToSize(observations, cW - doc.getTextWidth(obsPrefix) - 4);
                         doc.text(obsLines, mL + doc.getTextWidth(obsPrefix), y);
                         y += obsLines.length * 4.5 + 2;
                     }
 
-                    // ─── SÉPARATEUR DORÉ ──────────────────────────────────────────────
+                    // ─── SÉPARATEUR ────────────────────────────────────────────────────
                     y += 8;
                     doc.setDrawColor(...gold);
                     doc.setLineWidth(0.5);
                     doc.line(mL, y, W - mR, y);
-                    y += 7;
+                    y += 8;
 
-                    // ─── DATE + SIGNATURE ─────────────────────────────────────────────
+                    // ─── DATE + SIGNATURE ──────────────────────────────────────────────
+                    // Fait à (gauche)
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(9.5);
                     doc.setTextColor(...textDk);
                     doc.text(`Fait à ${city}, le ${issueDate.toLocaleDateString('fr-FR')}`, mL, y);
 
-                    // Bloc signature
+                    // Zone signature (droite) — sans cadre "photo"
                     const sigW  = 72;
-                    const sigH  = 32;
                     const sigX  = W - mR - sigW;
-                    const sigY  = y - 6;
 
-                    // Ombre
-                    doc.setFillColor(200, 208, 225);
-                    doc.roundedRect(sigX + 1, sigY + 1, sigW, sigH, 2, 2, 'F');
-                    // Fond
-                    doc.setFillColor(255, 255, 255);
-                    doc.setDrawColor(...navy);
-                    doc.setLineWidth(0.5);
-                    doc.roundedRect(sigX, sigY, sigW, sigH, 2, 2, 'FD');
-                    // Barre label navy
-                    doc.setFillColor(...navy);
-                    doc.roundedRect(sigX, sigY, sigW, 6.5, 2, 2, 'F');
-                    doc.rect(sigX, sigY + 3.5, sigW, 3, 'F');
-                    // Filet doré sous la barre
-                    doc.setFillColor(...gold);
-                    doc.rect(sigX, sigY + 6.5, sigW, 0.7, 'F');
-                    // Label texte
                     doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(7);
-                    doc.setTextColor(255, 255, 255);
-                    doc.text('Signature du bailleur', sigX + sigW / 2, sigY + 4.8, { align: 'center' });
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(...navy);
+                    doc.text('Signature du bailleur :', sigX, y);
 
                     if (this.signatureData) {
                         try {
-                            doc.addImage(this.signatureData, 'PNG', sigX + 3, sigY + 8, sigW - 6, sigH - 10);
+                            doc.addImage(this.signatureData, 'PNG', sigX, y + 3, sigW, 24);
                         } catch (e) {
                             console.warn('Erreur signature:', e);
                         }
-                    } else {
-                        // Lignes pointillées placeholder
-                        doc.setDrawColor(200, 208, 226);
-                        doc.setLineWidth(0.3);
-                        for (let lx = sigX + 6; lx < sigX + sigW - 6; lx += 5) {
-                            doc.line(lx, sigY + 22, lx + 3, sigY + 22);
-                        }
                     }
+                    // Ligne de signature sous la zone
+                    doc.setDrawColor(...navy);
+                    doc.setLineWidth(0.4);
+                    doc.line(sigX, y + 28, sigX + sigW, y + 28);
 
-                    // ─── FOOTER ───────────────────────────────────────────────────────
+                    // ─── FOOTER ────────────────────────────────────────────────────────
                     const fY = 276;
-                    doc.setFillColor(237, 241, 250);
+                    doc.setFillColor(238, 242, 252);
                     doc.rect(0, fY, W, H - fY, 'F');
-                    // Barre navy top footer
                     doc.setFillColor(...navy);
-                    doc.rect(0, fY, W, 2, 'F');
-                    // Points dorés décoratifs
-                    [mL, mL + 5.5, mL + 11].forEach(dx => {
-                        doc.setFillColor(...gold);
-                        doc.circle(dx, fY + 7, 0.9, 'F');
-                    });
-                    // Texte légal
+                    doc.rect(0, fY, W, 1.5, 'F');
+
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(6.2);
                     doc.setTextColor(85, 98, 120);
                     const legal = 'Art. 21 de la loi n° 89-462 du 6 juillet 1989 : Le bailleur est tenu de transmettre gratuitement une quittance au locataire qui en fait la demande. La quittance porte le détail des sommes versées par le locataire en distinguant le loyer et les charges.';
-                    const legalLines = doc.splitTextToSize(legal, cW - 5);
-                    legalLines.forEach((l, i) => doc.text(l, W / 2, fY + 8 + i * 3.5, { align: 'center' }));
-                    // Référence bas droite
+                    const legalLines = doc.splitTextToSize(legal, cW);
+                    legalLines.forEach((l, i) => doc.text(l, W / 2, fY + 7 + i * 3.5, { align: 'center' }));
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(6.5);
                     doc.setTextColor(...navy);
                     doc.text(refNum, W - mR, fY + 17, { align: 'right' });
 
-                    // ─── TÉLÉCHARGEMENT ───────────────────────────────────────────────
+                    // ─── TÉLÉCHARGEMENT ────────────────────────────────────────────────
                     const sanitizedTenantName = this.sanitizeFilename(tenantName);
                     const dateStr = issueDate.toISOString().split('T')[0];
                     const filename = `quittance_${sanitizedTenantName}_${dateStr}.pdf`;
