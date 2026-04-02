@@ -684,10 +684,20 @@
                         <div class="error-message" id="landlordAddressError"></div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="tenantName">Nom du locataire <span class="required">*</span></label>
-                        <input type="text" id="tenantName" required>
-                        <div class="error-message" id="tenantNameError"></div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tenantCivility">Civilité</label>
+                            <select id="tenantCivility">
+                                <option value="Monsieur">Monsieur</option>
+                                <option value="Madame">Madame</option>
+                                <option value="Monsieur et Madame">Monsieur et Madame</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="tenantName">Nom du locataire <span class="required">*</span></label>
+                            <input type="text" id="tenantName" required>
+                            <div class="error-message" id="tenantNameError"></div>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -802,7 +812,7 @@
                     <div class="preview-content-main">
                         <p>
                             Je soussigné <strong id="previewLandlordNameInText">Nom du bailleur</strong>, propriétaire du logement désigné ci-dessus, 
-                            déclare avoir reçu de Monsieur/Madame <strong id="previewTenantNameInText">Nom du locataire</strong>, 
+                            déclare avoir reçu de <strong id="previewTenantCivilityInText">Monsieur</strong> <strong id="previewTenantNameInText">Nom du locataire</strong>,
                             la somme de <strong id="previewTotalAmount">0,00 euros</strong> 
                             (<strong id="previewTotalAmountWords">zéro euro</strong>), 
                             au titre du paiement du loyer et des charges pour la période de location 
@@ -896,6 +906,7 @@
             setDefaultValues() {
                 document.getElementById('landlordName').value = 'Monsieur Toscano Noah';
                 document.getElementById('landlordAddress').value = '60 rue Saint Sébastien\n59800 Lille';
+                document.getElementById('tenantCivility').value = 'Monsieur';
                 document.getElementById('tenantName').value = 'CODJIA Rigel';
                 document.getElementById('propertyAddress').value = '17 rue Paul Ramadier\n59800 Lille';
                 document.getElementById('rentAmount').value = '517.50';
@@ -915,8 +926,8 @@
 
             initializeEventListeners() {
                 // Écouteurs pour la mise à jour de l'aperçu
-                const inputs = ['landlordName', 'landlordAddress', 'tenantName', 'propertyAddress', 
-                               'period', 'issueDate', 'rentAmount', 'charges', 'paymentMethod', 
+                const inputs = ['landlordName', 'landlordAddress', 'tenantCivility', 'tenantName', 'propertyAddress',
+                               'period', 'issueDate', 'rentAmount', 'charges', 'paymentMethod',
                                'paymentReference', 'observations'];
                 
                 inputs.forEach(id => {
@@ -971,7 +982,9 @@
                 // Mise à jour dans le texte
                 document.getElementById('previewLandlordNameInText').textContent = 
                     document.getElementById('landlordName').value || 'Nom du bailleur';
-                document.getElementById('previewTenantNameInText').textContent = 
+                document.getElementById('previewTenantCivilityInText').textContent =
+                    document.getElementById('tenantCivility').value || 'Monsieur';
+                document.getElementById('previewTenantNameInText').textContent =
                     document.getElementById('tenantName').value || 'Nom du locataire';
                 document.getElementById('previewPeriodInText').textContent = 
                     document.getElementById('period').value || 'période';
@@ -1311,7 +1324,9 @@
 
                     const landlordName = document.getElementById('landlordName').value;
                     const landlordAddress = document.getElementById('landlordAddress').value;
+                    const tenantCivility = document.getElementById('tenantCivility').value;
                     const tenantName = document.getElementById('tenantName').value;
+                    const tenantFullName = `${tenantCivility} ${tenantName}`;
                     const propertyAddress = document.getElementById('propertyAddress').value;
                     const period = document.getElementById('period').value;
                     const rent = parseFloat(document.getElementById('rentAmount').value) || 0;
@@ -1385,7 +1400,7 @@
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(40, 40, 40);
                     doc.setFontSize(9);
-                    doc.text(tenantName, col2X + 4, y + 13);
+                    doc.text(tenantFullName, col2X + 4, y + 13);
 
                     const propertyLines = propertyAddress.split('\n').filter(l => l.trim());
                     doc.setFontSize(8.5);
@@ -1403,7 +1418,7 @@
                     doc.rect(marginL, y, contentW, 2, 'F');
                     y += 6;
 
-                    const mainText = `Je soussigné(e) ${landlordName}, propriétaire du logement désigné ci-dessus, déclare avoir reçu de ${tenantName}, la somme de ${this.formatCurrency(total)} (${this.numberToWords(total)}), au titre du paiement du loyer et des charges pour la période de location du mois de ${period} et lui en donne quittance, sous réserve de tous mes droits.`;
+                    const mainText = `Je soussigné(e) ${landlordName}, propriétaire du logement désigné ci-dessus, déclare avoir reçu de ${tenantFullName}, la somme de ${this.formatCurrency(total)} (${this.numberToWords(total)}), au titre du paiement du loyer et des charges pour la période de location du mois de ${period} et lui en donne quittance, sous réserve de tous mes droits.`;
 
                     doc.setFont('times', 'normal');
                     doc.setTextColor(30, 30, 30);
