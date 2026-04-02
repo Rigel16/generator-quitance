@@ -887,10 +887,20 @@
                 this.canvas = document.getElementById('signatureCanvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.initializeEventListeners();
-                this.updatePreview();
                 this.setCurrentDate();
+                this.setDefaultValues();
                 this.adjustCanvasForMobile();
                 window.addEventListener('resize', () => this.adjustCanvasForMobile());
+            }
+
+            setDefaultValues() {
+                document.getElementById('landlordName').value = 'Monsieur Toscano Noah';
+                document.getElementById('landlordAddress').value = '60 rue Saint Sébastien\n59800 Lille';
+                document.getElementById('tenantName').value = 'CODJIA Rigel';
+                document.getElementById('propertyAddress').value = '17 rue Paul Ramadier\n59800 Lille';
+                document.getElementById('rentAmount').value = '517.50';
+                document.getElementById('charges').value = '45.00';
+                this.updatePreview();
             }
 
             adjustCanvasForMobile() {
@@ -1292,146 +1302,249 @@
 
                 try {
                     const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
+                    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-                    // Configuration des fonts et couleurs
-                    doc.setFont('times', 'normal');
-                    
-                    // En-tête
-                    doc.setFontSize(18);
-                    doc.setFont('times', 'bold');
-                    doc.text('QUITTANCE DE LOYER', 105, 25, { align: 'center' });
-                    
-                    doc.setFontSize(12);
-                    doc.setFont('times', 'normal');
-                    doc.text('Location vide ou meublée à titre de résidence principale', 105, 35, { align: 'center' });
+                    const W = 210;
+                    const marginL = 15;
+                    const marginR = 15;
+                    const contentW = W - marginL - marginR;
 
-                    // Informations bailleur et locataire
-                    doc.setFontSize(11);
-                    doc.setFont('times', 'bold');
-                    doc.text('Bailleur :', 20, 55);
-                    doc.setFont('times', 'normal');
-                    const landlordInfo = [
-                        document.getElementById('landlordName').value,
-                        ...document.getElementById('landlordAddress').value.split('\n')
-                    ];
-                    landlordInfo.forEach((line, index) => {
-                        doc.text(line, 20, 65 + (index * 6));
-                    });
-
-                    doc.setFont('times', 'bold');
-                    doc.text('Locataire :', 120, 55);
-                    doc.setFont('times', 'normal');
-                    doc.text(document.getElementById('tenantName').value, 120, 65);
-
-                    // Adresse du logement
-                    doc.setFont('times', 'bold');
-                    doc.text('Adresse du logement :', 20, 105);
-                    doc.setFont('times', 'normal');
-                    const propertyLines = document.getElementById('propertyAddress').value.split('\n');
-                    propertyLines.forEach((line, index) => {
-                        doc.text(line, 20, 115 + (index * 6));
-                    });
-
-                    // Corps du texte
                     const landlordName = document.getElementById('landlordName').value;
+                    const landlordAddress = document.getElementById('landlordAddress').value;
                     const tenantName = document.getElementById('tenantName').value;
+                    const propertyAddress = document.getElementById('propertyAddress').value;
                     const period = document.getElementById('period').value;
                     const rent = parseFloat(document.getElementById('rentAmount').value) || 0;
                     const charges = parseFloat(document.getElementById('charges').value) || 0;
                     const total = rent + charges;
-
-                    const mainText = `Je soussigné ${landlordName}, propriétaire du logement désigné ci-dessus, déclare avoir reçu de Monsieur/Madame ${tenantName}, la somme de ${this.formatCurrency(total)} (${this.numberToWords(total)}), au titre du paiement du loyer et des charges pour la période de location ${period} et lui en donne quittance, sous réserve de tous mes droits.`;
-
-                    doc.setFont('times', 'normal');
-                    doc.setFontSize(11);
-                    const splitText = doc.splitTextToSize(mainText, 170);
-                    doc.text(splitText, 20, 145);
-
-                    // Détail du règlement
-                    let currentY = 145 + (splitText.length * 6) + 15;
-                    
-                    doc.setFont('times', 'bold');
-                    doc.text('Détail du règlement :', 20, currentY);
-                    currentY += 10;
-
-                    // Tableau des montants
-                    doc.setFont('times', 'normal');
-                    doc.text('Loyer :', 25, currentY);
-                    doc.text(this.formatCurrency(rent), 160, currentY, { align: 'right' });
-                    currentY += 8;
-
-                    doc.text('Provision pour charges :', 25, currentY);
-                    doc.text(this.formatCurrency(charges), 160, currentY, { align: 'right' });
-                    currentY += 8;
-
-                    doc.line(25, currentY, 160, currentY);
-                    currentY += 5;
-
-                    doc.setFont('times', 'bold');
-                    doc.text('Total :', 25, currentY);
-                    doc.text(this.formatCurrency(total), 160, currentY, { align: 'right' });
-                    currentY += 15;
-
-                    // Informations de paiement
-                    doc.setFont('times', 'normal');
-                    doc.text(`Mode de paiement : ${document.getElementById('paymentMethod').value}`, 20, currentY);
-                    currentY += 8;
-
+                    const paymentMethod = document.getElementById('paymentMethod').value;
                     const paymentRef = document.getElementById('paymentReference').value;
-                    if (paymentRef.trim()) {
-                        doc.text(`Référence : ${paymentRef}`, 20, currentY);
-                        currentY += 8;
-                    }
-
                     const observations = document.getElementById('observations').value;
-                    if (observations.trim()) {
-                        doc.text('Observations :', 20, currentY);
-                        currentY += 6;
-                        const obsText = doc.splitTextToSize(observations, 170);
-                        doc.text(obsText, 20, currentY);
-                        currentY += obsText.length * 6;
+                    const issueDate = new Date(document.getElementById('issueDate').value);
+                    const city = this.extractCity(landlordAddress) || '';
+
+                    // ─── BANDE D'EN-TÊTE ───────────────────────────────────────────────
+                    doc.setFillColor(30, 55, 100);
+                    doc.rect(0, 0, W, 32, 'F');
+
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(20);
+                    doc.text('QUITTANCE DE LOYER', W / 2, 14, { align: 'center' });
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.text('Location vide ou meublée à titre de résidence principale', W / 2, 22, { align: 'center' });
+
+                    // Date d'émission alignée à droite dans le bandeau
+                    doc.setFontSize(8);
+                    doc.text(`Émis le ${issueDate.toLocaleDateString('fr-FR')}`, W - marginR, 28, { align: 'right' });
+
+                    // ─── BLOC BAILLEUR / LOCATAIRE ─────────────────────────────────────
+                    let y = 42;
+                    const boxH = 32;
+                    const colW = (contentW - 5) / 2;
+
+                    // Bailleur
+                    doc.setDrawColor(200, 210, 230);
+                    doc.setFillColor(245, 248, 255);
+                    doc.roundedRect(marginL, y, colW, boxH, 2, 2, 'FD');
+
+                    doc.setTextColor(30, 55, 100);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8);
+                    doc.text('BAILLEUR', marginL + 4, y + 6);
+
+                    doc.setDrawColor(30, 55, 100);
+                    doc.line(marginL + 4, y + 7.5, marginL + colW - 4, y + 7.5);
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(40, 40, 40);
+                    doc.setFontSize(9);
+                    doc.text(landlordName, marginL + 4, y + 13);
+
+                    const landlordLines = landlordAddress.split('\n').filter(l => l.trim());
+                    landlordLines.forEach((line, i) => {
+                        doc.text(line, marginL + 4, y + 18 + i * 5);
+                    });
+
+                    // Locataire
+                    const col2X = marginL + colW + 5;
+                    doc.setDrawColor(200, 210, 230);
+                    doc.setFillColor(245, 248, 255);
+                    doc.roundedRect(col2X, y, colW, boxH, 2, 2, 'FD');
+
+                    doc.setTextColor(30, 55, 100);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8);
+                    doc.text('LOCATAIRE', col2X + 4, y + 6);
+
+                    doc.setDrawColor(30, 55, 100);
+                    doc.line(col2X + 4, y + 7.5, col2X + colW - 4, y + 7.5);
+
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(40, 40, 40);
+                    doc.setFontSize(9);
+                    doc.text(tenantName, col2X + 4, y + 13);
+
+                    const propertyLines = propertyAddress.split('\n').filter(l => l.trim());
+                    doc.setFontSize(8.5);
+                    doc.setTextColor(80, 80, 80);
+                    doc.text('Adresse du logement :', col2X + 4, y + 20);
+                    propertyLines.forEach((line, i) => {
+                        doc.text(line, col2X + 4, y + 25 + i * 5);
+                    });
+
+                    // ─── TEXTE PRINCIPAL ──────────────────────────────────────────────
+                    y += boxH + 10;
+
+                    doc.setDrawColor(220, 225, 235);
+                    doc.setFillColor(252, 252, 254);
+                    doc.rect(marginL, y, contentW, 2, 'F');
+                    y += 6;
+
+                    const mainText = `Je soussigné(e) ${landlordName}, propriétaire du logement désigné ci-dessus, déclare avoir reçu de ${tenantName}, la somme de ${this.formatCurrency(total)} (${this.numberToWords(total)}), au titre du paiement du loyer et des charges pour la période de location du mois de ${period} et lui en donne quittance, sous réserve de tous mes droits.`;
+
+                    doc.setFont('times', 'normal');
+                    doc.setTextColor(30, 30, 30);
+                    doc.setFontSize(10.5);
+                    const splitText = doc.splitTextToSize(mainText, contentW);
+                    doc.text(splitText, marginL, y);
+
+                    y += splitText.length * 5.5 + 10;
+
+                    // ─── TABLEAU DÉTAIL RÈGLEMENT ─────────────────────────────────────
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(30, 55, 100);
+                    doc.setFontSize(9.5);
+                    doc.text('DÉTAIL DU RÈGLEMENT', marginL, y);
+                    y += 2;
+
+                    // En-tête tableau
+                    doc.setFillColor(30, 55, 100);
+                    doc.rect(marginL, y, contentW, 7, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(8.5);
+                    doc.text('Désignation', marginL + 4, y + 5);
+                    doc.text('Montant', W - marginR - 4, y + 5, { align: 'right' });
+                    y += 7;
+
+                    const rows = [
+                        { label: 'Loyer hors charges', amount: rent, bg: [255, 255, 255] },
+                        { label: 'Provisions sur charges', amount: charges, bg: [247, 249, 255] },
+                    ];
+
+                    rows.forEach(row => {
+                        doc.setFillColor(...row.bg);
+                        doc.rect(marginL, y, contentW, 7, 'F');
+                        doc.setDrawColor(220, 225, 235);
+                        doc.rect(marginL, y, contentW, 7, 'S');
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(40, 40, 40);
+                        doc.setFontSize(9);
+                        doc.text(row.label, marginL + 4, y + 4.8);
+                        doc.text(this.formatCurrency(row.amount), W - marginR - 4, y + 4.8, { align: 'right' });
+                        y += 7;
+                    });
+
+                    // Ligne total
+                    doc.setFillColor(30, 55, 100);
+                    doc.rect(marginL, y, contentW, 8, 'F');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(9.5);
+                    doc.text('TOTAL', marginL + 4, y + 5.5);
+                    doc.text(this.formatCurrency(total), W - marginR - 4, y + 5.5, { align: 'right' });
+                    y += 8;
+
+                    // ─── MODE DE PAIEMENT ─────────────────────────────────────────────
+                    y += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(60, 60, 60);
+                    doc.setFontSize(9);
+                    doc.text(`Mode de paiement : `, marginL, y);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(30, 30, 30);
+                    const modeW = doc.getTextWidth('Mode de paiement : ');
+                    doc.text(paymentMethod, marginL + modeW, y);
+                    y += 6;
+
+                    if (paymentRef.trim()) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(60, 60, 60);
+                        doc.text(`Référence : `, marginL, y);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(30, 30, 30);
+                        const refW = doc.getTextWidth('Référence : ');
+                        doc.text(paymentRef, marginL + refW, y);
+                        y += 6;
                     }
 
-                    // Date et signature
-                    currentY += 20;
-                    const issueDate = new Date(document.getElementById('issueDate').value);
-                    const city = this.extractCity(document.getElementById('landlordAddress').value) || '';
-                    
-                    doc.text(`Fait à ${city}, le ${issueDate.toLocaleDateString('fr-FR')}`, 20, currentY);
-                    
-                    doc.text('Signature du bailleur :', 120, currentY);
+                    if (observations.trim()) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(60, 60, 60);
+                        doc.setFontSize(9);
+                        doc.text('Observations :', marginL, y);
+                        y += 5;
+                        const obsText = doc.splitTextToSize(observations, contentW);
+                        doc.setTextColor(30, 30, 30);
+                        doc.text(obsText, marginL, y);
+                        y += obsText.length * 5;
+                    }
 
-                    // Ajout de la signature si présente
+                    // ─── DATE & SIGNATURE ──────────────────────────────────────────────
+                    y += 12;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(40, 40, 40);
+                    doc.setFontSize(9.5);
+                    doc.text(`Fait à ${city}, le ${issueDate.toLocaleDateString('fr-FR')}`, marginL, y);
+
+                    // Bloc signature à droite
+                    const sigX = W - marginR - 65;
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(30, 55, 100);
+                    doc.setFontSize(8.5);
+                    doc.text('Signature du bailleur :', sigX, y);
+
+                    const sigBoxY = y + 3;
+                    doc.setDrawColor(180, 190, 210);
+                    doc.setFillColor(250, 251, 255);
+                    doc.roundedRect(sigX, sigBoxY, 65, 28, 2, 2, 'FD');
+
                     if (this.signatureData) {
                         try {
-                            doc.addImage(this.signatureData, 'PNG', 120, currentY + 5, 60, 25);
+                            doc.addImage(this.signatureData, 'PNG', sigX + 2, sigBoxY + 2, 61, 24);
                         } catch (error) {
                             console.warn('Erreur lors de l\'ajout de la signature:', error);
                         }
                     }
 
-                    // Mentions légales
-                    doc.setFontSize(9);
-                    doc.text('Article 21 de la loi n° 89-462 du 6 juillet 1989 : Le bailleur est tenu de transmettre gratuitement', 20, 280);
-                    doc.text('une quittance au locataire qui en fait la demande. La quittance porte le détail des sommes', 20, 286);
-                    doc.text('versées par le locataire en distinguant le loyer et les charges.', 20, 292);
+                    // ─── PIED DE PAGE ──────────────────────────────────────────────────
+                    doc.setFillColor(30, 55, 100);
+                    doc.rect(0, 282, W, 15, 'F');
 
-                    // Génération du nom de fichier
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(200, 210, 230);
+                    doc.setFontSize(6.5);
+                    const legal = 'Art. 21, loi n° 89-462 du 6 juillet 1989 : Le bailleur est tenu de transmettre gratuitement une quittance au locataire qui en fait la demande. La quittance porte le détail des sommes versées en distinguant le loyer et les charges.';
+                    const legalLines = doc.splitTextToSize(legal, contentW);
+                    legalLines.forEach((line, i) => {
+                        doc.text(line, W / 2, 287 + i * 3.5, { align: 'center' });
+                    });
+
+                    // ─── NOM DE FICHIER & TÉLÉCHARGEMENT ──────────────────────────────
                     const sanitizedTenantName = this.sanitizeFilename(tenantName);
                     const dateStr = issueDate.toISOString().split('T')[0];
                     const filename = `quittance_${sanitizedTenantName}_${dateStr}.pdf`;
 
-                    // Téléchargement
                     doc.save(filename);
 
-                    // Message de succès
                     const successMessage = document.getElementById('successMessage');
                     successMessage.textContent = `Quittance générée avec succès ! Fichier : ${filename}`;
                     successMessage.style.display = 'block';
                     successMessage.scrollIntoView({ behavior: 'smooth' });
 
-                    // Masquer le message après 5 secondes
                     setTimeout(() => {
                         successMessage.style.display = 'none';
                     }, 5000);
